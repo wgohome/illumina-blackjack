@@ -1,3 +1,5 @@
+import time
+
 from models.deck import Deck
 from models.participant import Participant
 from utils.choice_picker import ChoicePicker
@@ -27,16 +29,27 @@ class Table:
     def participants(self) -> list[Participant]:
         return [self._dealer, *self._players]
 
+    @property
+    def round(self) -> int:
+        return self._round
+
     def run_a_round(self) -> None:
         self._round += 1
         self._deck = Deck()  # Reset deck
+        print("\nShuffling the decks ...")
+        time.sleep(1)
+        print(f"{self._dealer.name} is dealing out fresh cards ...")
+        time.sleep(1)
         for participant in self.participants:
             _ = participant.reset_hand(self._deck.hit(), self._deck.hit())
         self._print_round_status()
+        clear_screen()
         for player in self._players:
             _ = input(f"Pass control to player {player.name}. Press enter once ready. \n")
+            self._print_round_status()
             self._run_player_turn(player)
         _ = input(f"Pass control to dealer {self._dealer.name}. Press enter once ready. \n")
+        self._print_round_status()
         self._run_dealer_turn()
 
     def _print_round_status(self) -> None:
@@ -51,6 +64,8 @@ class Table:
         if player.hand.is_blackjack():
             self._handle_blackjack_case(player)
             self._deck.send_to_discard(*player.hand.drop())
+            _ = input(f"End of {player.name}'s turn. Press enter to clear screen.")
+            clear_screen()
             return None  # Done with turn if hits blackjack
         while True:
             choice = self._deck_hitter(player)
@@ -72,8 +87,10 @@ class Table:
         print(f"Dealer {dealer.name}'s turn")
         print(dealer.get_private_status())
         if dealer.hand.is_blackjack():
-            self._handle_blackjack_case(dealer)
+            self._handle_blackjack_case(dealer, role="dealer")
             self._deck.send_to_discard(*dealer.hand.drop())
+            _ = input(f"End of this round. Press enter to clear screen.")
+            clear_screen()
             return None
         while True:
             choice = self._deck_hitter(dealer)
@@ -84,8 +101,9 @@ class Table:
             print(dealer.get_private_status())
             if new_score > 21:
                 self._handle_exceed_21_for_dealer(surviving_players)
-                self._deck.send_to_discard(*dealer.hand.drop())
-                break
+                _ = input(f"End of this round. Press enter to clear screen.")
+                clear_screen()
+                return None
         # Face off with surviving players
         print("\nSurviving players are dealing with the dealer ...")
         for player in surviving_players:
@@ -116,7 +134,9 @@ class Table:
         for player in surviving_players:
             print(f"As a dealer, you lose 10 points to {player.name}, who has a hand of {player.hand.score}")
             self._dealer.minus_points(10)
+            # player don't earn points here
             self._deck.send_to_discard(*player.hand.drop())
+        self._deck.send_to_discard(*self._dealer.hand.drop())
 
     def _dealer_duel_against(self, player: Participant) -> None:
         dealer = self._dealer
@@ -129,7 +149,7 @@ class Table:
             print(f"Dealer {dealer.name} ({dealer.hand.score}) won player {player.name} ({player.hand.score}) and earned 10 points.")
         elif dealer_score < player_score:
             player.add_points(10)
-            print(f"Player {player.name} ({player.hand.score}) won dealer {dealer.name} ({dealer.hand.score})) and earned 10 points.")
+            print(f"Player {player.name} ({player.hand.score}) won dealer {dealer.name} ({dealer.hand.score}) and earned 10 points.")
         else:
             print(f"It is a push. Both dealer ({dealer.name}) and player ({player.name}) have the same score and no points are awarded.")
         self._deck.send_to_discard(*player.hand.drop())
