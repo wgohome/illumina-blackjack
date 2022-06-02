@@ -8,6 +8,9 @@ from utils.registration_asker import RegistrationAsker
 
 
 class Table:
+    """
+    A Table holds the game, with a deck, a dealer and at least one player
+    """
     def __init__(
         self,
         dealer: Participant | None = None,
@@ -15,7 +18,6 @@ class Table:
     ):
         self._round: int = 0
         self._deck: Deck = Deck()
-        # Allows dependency injection of predefined dealer and players via optional arguments
         if dealer is None or players is None:
             dealer, players = RegistrationAsker.call()
         self._dealer: Participant = dealer
@@ -25,73 +27,114 @@ class Table:
     def participants(self) -> list[Participant]:
         return [self._dealer, *self._players]
 
-    def restart_game(self):
+    def run_a_round(self) -> None:
         self._round += 1
-        self._deck = Deck()
+        self._deck = Deck()  # Reset deck
         for participant in self.participants:
-            participant.reset_hand(self._deck.hit(), self._deck.hit())
-        self._get_status()
+            _ = participant.reset_hand(self._deck.hit(), self._deck.hit())
+        self._print_round_status()
         for player in self._players:
-            _ = input(f"Pass control to player {player.name}. Press enter once ready.")
-            print()
-            self._run_turn(player)
-        # run dealer turn,
-        # if not exploded, then compare against surviving players
-        print("Dealer turn")
+            _ = input(f"Pass control to player {player.name}. Press enter once ready. \n")
+            self._run_player_turn(player)
+        _ = input(f"Pass control to dealer {self._dealer.name}. Press enter once ready. \n")
         self._run_dealer_turn()
 
-
-    def _get_status(self) -> None:
+    def _print_round_status(self) -> None:
         print(f"CURRENT STATUS FOR ROUND {self._round}")
         for participant in self.participants:
             print(participant.get_public_status())
         print()
 
-    def _run_turn(self, participant: Participant) -> None:
-        # if scored blackjack then just auto win 15 points
-        if participant.hand_is_blackjack():
-            print(participant.get_private_status())
-            participant.add_points(15)
-            # congratulate and skip to next person turn
-            _ = input(f"Congratulations {participant.name}! You have earned 15 points from scoring a blackjack. End of your turn. Press enter to clear screen.")
-            clear_screen()
-            return None
-
-        picker = ChoicePicker(
-            prompt="Do you want to take another hit?",
-            options=[
-                (1, "Yes, hit the deck for another card"),
-                (0, "No, that's enough for me"),
-            ]
-        )
-        picker_2 = ChoicePicker(
-            prompt="Do you want to take another hit?",
-            options=[
-                (1, "Yes, I have to take another hit - My hand hasn't exceeded 16"),
-            ]
-        )
-
-        # ask to take hit until it lose or satistifed
-        while participant.score <= 21:  # TODO max of 5 cards??
-            print(participant.get_private_status())
-            if participant.score > 16:
-                choice = picker.run()
-                # If 16 or less must take a card! (must be > 16)
-                if choice == 0:
-                    break
-            else:
-                _ = picker_2.run()  # player had no choice, just to acknowledge that they are hitting the deck
-            new_score = participant.add_to_hand(self._deck.hit())
+    def _run_player_turn(self, player: Participant) -> None:
+        print(f"Player {player.name}'s turn")
+        print(player.get_private_status())
+        if player.hand.is_blackjack():
+            self._handle_blackjack_case(player)
+            self._deck.send_to_discard(*player.hand.drop())
+            return None  # Done with turn if hits blackjack
+        while True:
+            choice = self._deck_hitter(player)
+            if choice == 0:
+                break  # points will be handled during dealer's turn
+            new_score = player.hand.add(self._deck.hit())
             print()
-            print(participant.get_private_status())
+            print(player.get_private_status())
             if new_score > 21:
-                print("You have exceeded score of 21 on your hands. You will lose 10 points this round")
-                participant.minus_points(10)
-            # else will compare score with dealer to see who wins
-        _ = input(f"End of {participant.name}'s turn. Press enter to clear screen.")
+                self._handle_exceed_21(player)
+                self._deck.send_to_discard(*player.hand.drop())
+                break
+        _ = input(f"End of {player.name}'s turn. Press enter to clear screen.")
         clear_screen()
 
     def _run_dealer_turn(self) -> None:
+        dealer = self._dealer
+        surviving_players = [player for player in self._players if not player.hand.is_empty()]
+        print(f"Dealer {dealer.name}'s turn")
+        print(dealer.get_private_status())
+        if dealer.hand.is_blackjack():
+            self._handle_blackjack_case(dealer)
+            self._deck.send_to_discard(*dealer.hand.drop())
+            return None
+        while True:
+            choice = self._deck_hitter(dealer)
+            if choice == 0:
+                break  # points will be handled during dealer's turn
+            new_score = dealer.hand.add(self._deck.hit())
+            print()
+            print(dealer.get_private_status())
+            if new_score > 21:
+                self._handle_exceed_21_for_dealer(surviving_players)
+                self._deck.send_to_discard(*dealer.hand.drop())
+                break
+        # Face off with surviving players
+        print("\nSurviving players are dealing with the dealer ...")
+        for player in surviving_players:
+            self._dealer_duel_against(player)
+        self._deck.send_to_discard(*dealer.hand.drop())
+        _ = input(f"End of this round. Press enter to clear screen.")
+        clear_screen()
+
+    def _handle_blackjack_case(
+        self,
+        participant: Participant,
+        role: str = "player"
+    ) -> None:
+        # Assumes participant has been validated to hit blackjack
+        participant.add_points(15)
+        print(f"Congratulations {participant.name}! \nYou have earned 15 points from scoring a blackjack.")
+        if role == "dealer":
+            print("Remaining participants will not earn any more points this round")
+        _ = input(f"End of your turn. Press enter to clear screen for the next player.")
+        clear_screen()
+
+    def _handle_exceed_21(self, participant: Participant) -> None:
+        participant.minus_points(10)
+        print("You have exceeded score of 21 on your hands. You will lose 10 points this round")
+
+    def _handle_exceed_21_for_dealer(self, surviving_players: list[Participant]) -> None:
+        print("You have exceeded score of 21 on your hands.")
+        for player in surviving_players:
+            print(f"As a dealer, you lose 10 points to {player.name}, who has a hand of {player.hand.score}")
+            self._dealer.minus_points(10)
+            self._deck.send_to_discard(*player.hand.drop())
+
+    def _dealer_duel_against(self, player: Participant) -> None:
+        dealer = self._dealer
+        dealer_score: int = dealer.hand.score
+        player_score: int = player.hand.score
+        assert 16 < dealer_score <= 21, f"Dealer ({dealer.name}) score out of range (16,21]"
+        assert 16 < player_score <= 21, f"Player ({player.name}) score out of range (16,21]"
+        if dealer_score > player_score:
+            dealer.add_points(10)
+            print(f"Dealer {dealer.name} ({dealer.hand.score}) won player {player.name} ({player.hand.score}) and earned 10 points.")
+        elif dealer_score < player_score:
+            player.add_points(10)
+            print(f"Player {player.name} ({player.hand.score}) won dealer {dealer.name} ({dealer.hand.score})) and earned 10 points.")
+        else:
+            print(f"It is a push. Both dealer ({dealer.name}) and player ({player.name}) have the same score and no points are awarded.")
+        self._deck.send_to_discard(*player.hand.drop())
+
+    def _deck_hitter(self, participant: Participant) -> int:
         picker = ChoicePicker(
             prompt="Do you want to take another hit?",
             options=[
@@ -105,43 +148,8 @@ class Table:
                 (1, "Yes, I have to take another hit - My hand hasn't exceeded 16"),
             ]
         )
-
-        surviving_players = [player for player in self._players if player.score <= 21]
-
-        # if scored blackjack then just auto win 15 points
-        participant = self._dealer
-        if participant.hand_is_blackjack():
-            print(participant.get_private_status())
-            participant.add_points(15)
-            _ = input(f"Congratulations {participant.name}! You have earned 15 points from scoring a blackjack. The remaning surviving players will not earn any points.")
-            clear_screen()
-            return None
-
-        while participant.score <= 21:
-            print(participant.get_private_status())
-            if participant.score > 16:
-                choice = picker.run()
-                if choice == 0:
-                    break
-            else:
-                _ = picker_2.run()  # player had no choice, just to acknowledge that they are hitting the deck
-            new_score = participant.add_to_hand(self._deck.hit())
-            print()
-            print(participant.get_private_status())
-
-            if new_score > 21:
-                print("You have exceeded score of 21 on your hands. You will lose 10 points per surviving players this round")
-                participant.minus_points(10 * len(surviving_players))
-                # surviving players will win 10 points
-                for player in surviving_players:
-                    player.add_points(10)
-                    print(f"10 points added for {player.name}")
-
-        if participant.score <= 21:
-            for player in surviving_players:
-                if player.score > participant.score:
-                    player.add_points(10)
-                    print(f"10 points added for player {player.name}")
-                elif participant.score > player.score:
-                    participant.add_points(10)
-                    print(f"10 points added for dealer {participant.name}")
+        if participant.hand.score > 16:
+            return picker.run()
+        # Else, participant have no choice,
+        # Prompt just to acknowledge that they are hitting the deck
+        return picker_2.run()

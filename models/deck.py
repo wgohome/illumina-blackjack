@@ -15,10 +15,12 @@ class Deck:
 
     def hit(self) -> Card:
         return self._cards.pop()
+        # TODO reshuffle the deck everytime deck goes below 15?
 
     def _shuffle(self) -> None:
         # Shuffles list in place
         random_shuffle(self._cards)
 
-    def send_to_discard(self, card: Card) -> None:
-        self._discard_pile.append(card)
+    def send_to_discard(self, *cards: Card) -> None:
+        for card in cards:
+            self._discard_pile.append(card)
