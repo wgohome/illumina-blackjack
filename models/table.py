@@ -1,27 +1,25 @@
 from models.deck import Deck
 from models.participant import Participant
 from utils.choice_picker import ChoicePicker
-from utils.helpers import clear_screen
+from utils.helpers import (
+    clear_screen,
+)
+from utils.registration_asker import RegistrationAsker
 
 
 class Table:
-    def __init__(self):
+    def __init__(
+        self,
+        dealer: Participant | None = None,
+        players: list[Participant] | None = None
+    ):
         self._round: int = 0
         self._deck: Deck = Deck()
-        self._dealer: Participant
-        self._players: list[Participant] = list()
-        self._add_participants()
-
-    def _add_participants(self) -> None:
-        n = int(input("How many players? "))
-        while n < 2:
-            print("At least two players are needed for Blackjack ...")
-            n = int(input("How many players?"))
-        name = input("Enter name of dealer: ")
-        self._dealer = Participant(name=name)
-        for _ in range(n - 1):
-            name = input("Enter name of player: ")
-            self._players.append(Participant(name=name))
+        # Allows dependency injection of predefined dealer and players via optional arguments
+        if dealer is None or players is None:
+            dealer, players = RegistrationAsker.call()
+        self._dealer: Participant = dealer
+        self._players: list[Participant] = players
 
     @property
     def participants(self) -> list[Participant]:
