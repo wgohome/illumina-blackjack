@@ -9,6 +9,7 @@ class ChoicePicker:
             print(f"{index}. {description}")
         choice = self._get_numeric_choice()
         while choice not in [i for i, _ in self._options]:
+            choice = "Empty string" if choice == -100000 else choice
             print(f"{choice} is not a valid option number.")
             choice = self._get_numeric_choice()
         return choice
