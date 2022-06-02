@@ -7,8 +7,12 @@ class ChoicePicker:
         print(self._prompt)
         for index, description in self._options:
             print(f"{index}. {description}")
-        choice = int(input("Enter your choice number: "))
-        while choice not in [i for i, d in self._options]:
+        choice = self._get_numeric_choice()
+        while choice not in [i for i, _ in self._options]:
             print(f"{choice} is not a valid option number.")
-            choice = int(input("Enter your choice number again: "))
+            choice = self._get_numeric_choice()
         return choice
+
+    def _get_numeric_choice(self) -> int:
+        choice_str = input("Enter your choice number: ")
+        return int(choice_str) if choice_str.isdigit() else -100000

@@ -30,15 +30,19 @@ class RegistrationAsker:
         ]
 
     def _ask_for_n_participants(self) -> int:
-        n: int = int(input("How many players? (including dealer)"))
+        n: int = self._get_numeric_choice()
         while n < 2:
             print("At least two players are needed for Blackjack ...")
-            n = int(input("How many players? (including dealer)"))
+            n = self._get_numeric_choice()
         return n
 
     def _ask_for_name(self, role: str = "player") -> str:
-        name: str = input(f"Enter name of the {role}").strip()
+        name: str = input(f"Enter name of the {role}: ").strip()
         while not name:
             print("Please enter a name that is not blank")
-            name = input(f"Enter name of the {role}").strip()
+            name = input(f"Enter name of the {role}: ").strip()
         return name
+
+    def _get_numeric_choice(self) -> int:
+        choice_str = input("How many players (including dealer)? ")
+        return int(choice_str) if choice_str.isdigit() else -100000
