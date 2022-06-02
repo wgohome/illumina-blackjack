@@ -35,14 +35,17 @@ class Participant:
     def points(self) -> int:
         return self._points
 
+    def get_points_status(self) -> str:
+        return f" - {self._name}: {self._points}"
+
     def get_public_status(self) -> str:
-        if self._hand == []:
+        if self._hand.size == 0:
             return f"{self.name}: Empty hand"
         assert self._hand.size >= 2, "Hand cannot have only one Card"
         return f" - {self.name}: {str(self._hand.cards[0])} and {self._hand.size - 1} other card(s)"
 
     def get_private_status(self) -> str:
-        if self._hand.size == []:
+        if self._hand.size == 0:
             return f"{self.name}: Empty hand"
         assert self._hand.size >= 2, "Hand cannot have only one Card"
         output = f"Score of current hand: {self.hand.score}\n"

@@ -1,22 +1,31 @@
-from models.card import Card, Rank, Suit
 from models.table import Table
+from utils.choice_picker import ChoicePicker
 
 
-def main():
+should_end_game = ChoicePicker(
+        prompt="Do you want to continue with the next round of the game?",
+        options=[
+            (1, "Hell yes, let's roll into the next round!"),
+            (0, "We are done - end the game now ..."),
+        ]
+    )
+
+def main() -> None:
     table = Table()
     while True:
+        print_participant_status(table)
         table.run_a_round()
-        # Print Game status - everybody's one card
-        # Ask first player to play
-        # First player see the screen decide if want to draw cards
-        # Repeat until first player blackjack, lose or done
-        # Repeat for all players
-        # Dealer play
-        # Record score for this round
-        # Repeat more rounds
-        # Until players decide to end the game
+        if should_end_game.run() == 0:
+            break
+    print_participant_status(table)
 
-        break
+
+def print_participant_status(table: Table) -> None:
+    print("Here is how the game went \n")
+    print(f"Total of {table.round} rounds have been played.")
+    print("Points so far:")
+    for participant in table.participants:
+        print(participant.get_points_status())
 
 
 if __name__ == "__main__":
