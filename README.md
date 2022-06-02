@@ -77,7 +77,9 @@ For the dealer's turn, the logic goes like this:
 
 ## Areas for improvement
 
-- Can build into a GUI
+- Can build into a GUI next
+
+- Can further refactor to decouple the behaviour in Table class
 
 - Can persist user name and scores to pick up where they left
 
