@@ -19,6 +19,13 @@ To run the tests written,
 - Install `pytest` with `pip`
 - Run `pytest` from the root of the repository
 
+If you do not have `Python >= 3.10` on your local, I have pushed a docker image from this app. You can pull a docker image from dockerhub and run:
+
+```bash
+docker pull wirriamm/illumina-blackjack
+docker run -it wirriamm/illumina-blackjack
+```
+
 ## Given Requirements
 
 a. Graphics are not necessary
