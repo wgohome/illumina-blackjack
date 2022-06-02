@@ -44,7 +44,11 @@ Participants can refer to both the dealer and the players. Each game must have e
 
 For each player's turn, the logic goes like this:
 
-(insert image)
+![image](https://user-images.githubusercontent.com/59186927/171618234-431bf0b3-8f91-4053-82e0-56621d232a6c.png)
+
+For the dealer's turn, the logic goes like this:
+
+![image](https://user-images.githubusercontent.com/59186927/171619055-df3da711-7d12-4c24-a785-de70538c44ab.png)
 
 ## Assumptions
 
