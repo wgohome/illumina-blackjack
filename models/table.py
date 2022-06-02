@@ -119,8 +119,6 @@ class Table:
             clear_screen()
             return None
 
-        import pdb; pdb.set_trace()
-
         while participant.score <= 21:
             print(participant.get_private_status())
             if participant.score > 16:
